@@ -353,7 +353,7 @@ for epoch in range(num_epochs):
         optimizer.zero_grad()
         loss_mean.backward()
         optimizer.step()
-#        log.write("batch_norm", var2num(model.module.batch_norm.running_mean))
+        #log.write("batch_norm", var2num(model.module.batch_norm.running_mean))
         took = time.time() - start_time
         print("batch {} loss: {:.3f}|{:.3f}|{:.3f} lr: {:.6f} "
               "top1: {:.3f} top5: {:.3f} | took {:.3f}s".format(

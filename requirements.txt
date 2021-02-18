@@ -4,3 +4,4 @@ h5py==2.8.0
 scipy==1.1.0
 torch==0.4.0
 torchvision==0.2.1
+annoy==1.17.0

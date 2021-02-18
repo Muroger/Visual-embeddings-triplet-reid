@@ -39,7 +39,7 @@ if True:
     bin = "python3"
 #else:
 #   bin = "/home/pfeiffer/.pyenv/shims/ipdb3"
-eval_args = [bin, "/media/hdd/code/clothes_dataset/code/triplet-reid-pytorch/eval.py",
+eval_args = [bin, "/media/hdd/code/clothes_dataset/code/triplet-reid-pytorch/src/eval.py",
              #"--dataset", args.dataset,
              "--query_dataset", query_csv,
              "--query_embeddings", query_embeddings,
