@@ -83,13 +83,13 @@ parser.add_argument('--alpha', default=1.0, type=float,
 parser.add_argument('--temp', default=1.0,
         help="Temperature of BatchSoft")
 
-parser.add_argument('--scale', default=1.125, type=float,
+parser.add_argument('--scale', default=1, type=float,
         help="Scaling of images before crop [scale * (image_height, image_width)]")
 
-parser.add_argument('--image_height', default=256, type=int,
+parser.add_argument('--image_height', default=192, type=int,
         help="Height of image that is fed to network.")
 
-parser.add_argument('--image_width', default=128, type=int,
+parser.add_argument('--image_width', default=192, type=int,
         help="Width of image that is fed to network.")
 
 parser.add_argument('--lr', default=3e-4, type=float,
@@ -176,6 +176,7 @@ def topk(cdist, pids, k):
         
     """ 
     batch_size = cdist.size()[0]
+    #print('batch_size', batch_size)
     index = torch.topk(cdist, k+1, largest=False, dim=1)[1] #topk returns value and index
     index = index[:, 1:] # drop diagonal
 
@@ -348,7 +349,7 @@ for epoch in range(num_epochs):
 #        log.write("emb", var2num(endpoints["emb"]), dtype=np.float32)
         log.write("pids", var2num(target), dtype=np.int)
         log.write("file", path, dtype=h5py.special_dtype(vlen=str))
-        log.write("log", [min_loss, mean_loss, max_loss, lr, topks[0], topks[4]], np.float32)
+        #log.write("log", [min_loss, mean_loss, max_loss, lr, topks[0], topks[4]], np.float32)
         optimizer.zero_grad()
         loss_mean.backward()
         optimizer.step()

@@ -42,6 +42,7 @@ def write_to_h5(output_file, model, endpoints, num_augmentations, dataloader, da
     print(len(dataloader), len(dataset))
 
     print("Model dimension is {}".format(model.module.dim))
+    #print('keys', keys)
     if len(keys) == 0:
         raise RuntimeError("Plase specify at least one key that should be written to file.")
 
@@ -267,7 +268,10 @@ def run(csv_file, data_dir, model_file, batch_size, crop, make_dataset_func,
     model, endpoints = restore_model(args, model_file)
     model = torch.nn.DataParallel(model).cuda()
     model.eval()
-    return write_to_h5(output_file, model, endpoints, num_augmentations, dataloader, dataset, keys)
+    if keys:
+        return write_to_h5(output_file, model, endpoints, num_augmentations, dataloader, dataset, keys)
+    else:
+        return write_to_h5(output_file, model, endpoints, num_augmentations, dataloader, dataset)
 
 if __name__ == "__main__":
     parser = ArgumentParser()
@@ -290,7 +294,7 @@ if __name__ == "__main__":
             csv file have to result in the correct file path."
             )
     parser.add_argument(
-            '--crop', required=True,
+            '--crop', required=False,
             action='store_true',
             help="Crop images on the fly using detection boxes."
             )
@@ -307,8 +311,8 @@ if __name__ == "__main__":
             '--force', default=False, action='store_true',
             help="Overwrite existing file."
             )
-    parser.add_argument('--keys', nargs='+', required=True)
-    parser.add_argument("--augmentation", default=None, choices=augmentation_choices.keys())
+    parser.add_argument('--keys', nargs='+', required=False)
+    parser.add_argument("--augmentation", default="None", choices=augmentation_choices.keys())
     parser.add_argument("--batch_size", default=32, type=int)
     args = parser.parse_args()
 

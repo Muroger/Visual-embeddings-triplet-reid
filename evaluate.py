@@ -7,13 +7,13 @@ import gc
 from embed import make_dataset_default
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", help="Which dataset to evaluate", required=True)
-parser.add_argument("--model", help="Path to model", required=True)
+parser.add_argument("--dataset", help="Which dataset to evaluate", required=True)#
+parser.add_argument("--model", help="Path to model", required=True)#
 parser.add_argument("--query", help="Path to query csv", required=True)
 parser.add_argument("--gallery", help="Path to gallery csv", required=True)
-parser.add_argument("--data_dir", help="Path to image directory", required=True)
+parser.add_argument("--data_dir", help="Path to image directory", required=True)#
 parser.add_argument("--batch_size", help="Batch size", type=str, default="32")
-parser.add_argument("--augmentation", required=True)
+parser.add_argument("--augmentation",default="None", required=False)
 parser.add_argument("--prefix", required=False)
 args = parser.parse_args()
 model_file = args.model
@@ -37,10 +37,10 @@ else:
 print("Evaluating query: {}, gallery {}".format(query_csv, gallery_csv))
 if True:
     bin = "python3"
-else:
-    bin = "/home/pfeiffer/.pyenv/shims/ipdb3"
-eval_args = [bin, "/home/pfeiffer/Projects/cupsizes/evaluate.py",
-             "--dataset", args.dataset,
+#else:
+#   bin = "/home/pfeiffer/.pyenv/shims/ipdb3"
+eval_args = [bin, "/media/hdd/code/clothes_dataset/code/triplet-reid-pytorch/eval.py",
+             #"--dataset", args.dataset,
              "--query_dataset", query_csv,
              "--query_embeddings", query_embeddings,
              "--gallery_dataset", gallery_csv,

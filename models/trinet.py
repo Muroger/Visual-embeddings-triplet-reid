@@ -19,7 +19,7 @@ class TriNet(ResNet):
 
         super(TriNet, self).__init__(block, layers, 1) # 0 classes thows an error
         batch_norm = nn.BatchNorm1d(1024)
-        self.avgpool = nn.AvgPool2d((8,4))
+        self.avgpool = nn.AvgPool2d((4,4))
         self.fc = nn.Sequential(
             nn.Linear(512 * block.expansion, 1024),
             batch_norm,
@@ -44,7 +44,7 @@ def trinet(**kwargs):
 
 
     model = TriNet(Bottleneck, [3, 4, 6, 3], **kwargs)
-
+    #print(model)
     pretrained_dict = model_zoo.load_url(model_urls['resnet50'])
     model_dict = model.state_dict()
 

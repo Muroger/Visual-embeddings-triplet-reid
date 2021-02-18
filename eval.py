@@ -131,7 +131,7 @@ def main():
     #     (query_pids, query_fids, query_embs)
     # ).batch(args.batch_size).make_one_shot_iterator().get_next()
 
-    batch_distances = loss.cdist(batch_embs, gallery_embs, metric=args.metric)#calc_cdist(batch_embs, gallery_embs, metric=args.metric)#
+    #batch_distances = loss.cdist(batch_embs, gallery_embs, metric=args.metric)#calc_cdist(batch_embs, gallery_embs, metric=args.metric)#
 
     # Check if we should use Market-1501 specific average precision computation.
     if args.use_market_ap:

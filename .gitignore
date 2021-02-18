@@ -112,3 +112,7 @@ evaluations/
 
 # Jupyter notebooks are generally just for testing
 notebooks/
+
+experiments/
+embed/
+top_5_viz_results
