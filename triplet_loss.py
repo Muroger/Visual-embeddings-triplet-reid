@@ -8,13 +8,13 @@ import numpy as np
 choices = ["BatchHard", "BatchSoft", "BatchHardWithSoftmax", "BatchHardSingleWithSoftmax", "BatchHardWithJunkSigmoid", "BatchHardWithJunkSoftmax"]
 
 def calc_cdist(a, b, metric='euclidean'):
-    diff = a[:, None, :] - b[None, :, :]
+    diff = torch.unsqueeze(a, dim=1) - torch.unsqueeze(b, dim=0)#a[:, None, :] - b[None, :, :]
     if metric == 'euclidean':
-        return torch.sqrt(torch.sum(diff*diff, dim=2) + 1e-12)
+        return torch.sqrt(torch.sum(torch.square(diff), dim=-1) + 1e-12)
     elif metric == 'sqeuclidean':
-        return torch.sum(diff*diff, dim=2)
+        return torch.sum(torch.square(diff), dim=-1)
     elif metric == 'cityblock':
-        return torch.sum(diff.abs(), dim=2)
+        return torch.sum(diff.abs(), dim=-1)
     else:
         raise NotImplementedError("Metric %s has not been implemented!" % metric)
 

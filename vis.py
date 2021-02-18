@@ -97,13 +97,10 @@ if __name__ == '__main__':
     # load embeddings
     embeddings_query, embeddings_gallery = load_embedding_from_h5(
         args.query_h5, args.gallery_h5)
-    # print(np.squeeze(embeddings_query,axis=1).shape)
-    # print(np.array(embeddings_query).shape)
-    # print(np.squeeze(embeddings_gallery,axis=1).shape)
-    # print(np.array(embeddings_gallery).shape)
+
     embeddings_query = np.squeeze(embeddings_query,axis=1)
     embeddings_gallery = np.squeeze(embeddings_gallery,axis=1)
-    
+    print(embeddings_query.shape)
     kd_tree = build_annoy_kd_tree(embeddings_gallery)
 
     for id_q, emb_q in enumerate(embeddings_query):

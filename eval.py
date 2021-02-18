@@ -8,11 +8,12 @@ import h5py
 import json
 import numpy as np
 from sklearn.metrics import average_precision_score
-import tensorflow as tf
+#import tensorflow as tf
 import common
-import loss
-#from triplet_loss import calc_cdist
-#from triplet_loss import choices as loss_choices
+#import loss
+from triplet_loss import calc_cdist
+import torch
+#from torch.utils.data import Dataset, DataLoader
 
 parser = ArgumentParser(description='Evaluate a ReID embedding.')
 
@@ -40,7 +41,7 @@ parser.add_argument(
     help='Path to the h5 file containing the gallery embeddings.')
 
 parser.add_argument(
-    '--metric', required=True, choices=loss.cdist.supported_metrics,#('euclidean','sqeuclidean','cityblock'),
+    '--metric', required=True, choices=('euclidean','sqeuclidean','cityblock'),#loss.cdist.supported_metrics,#
     help='Which metric to use for the distance between embeddings.')
 
 parser.add_argument(
@@ -123,16 +124,6 @@ def main():
     excluder = import_module('excluders.' + args.excluder).Excluder(gallery_fids)
 
     # We go through the queries in batches, but we always need the whole gallery
-    # batch_pids, batch_fids, batch_embs = next(iter(tf.data.Dataset.from_tensor_slices(
-    #     (query_pids, query_fids, query_embs)
-    # ).batch(args.batch_size)))#.make_one_shot_iterator().get_next()
-
-    # batch_pids, batch_fids, batch_embs = tf.compat.v1.data.Dataset.from_tensor_slices(
-    #     (query_pids, query_fids, query_embs)
-    # ).batch(args.batch_size).make_one_shot_iterator().get_next()
-
-    #batch_distances = loss.cdist(batch_embs, gallery_embs, metric=args.metric)#calc_cdist(batch_embs, gallery_embs, metric=args.metric)#
-
     # Check if we should use Market-1501 specific average precision computation.
     if args.use_market_ap:
         average_precision = average_precision_score_market
@@ -142,69 +133,44 @@ def main():
     # Loop over the query embeddings and compute their APs and the CMC curve.
     aps = []
     cmc = np.zeros(len(gallery_pids), dtype=np.int32)
-    # with tf.Session() as sess:
-    #     for start_idx in count(step=args.batch_size):
-    #         try:
-    #             # Compute distance to all gallery embeddings
-    #             distances, pids, fids = sess.run([
-    #                 batch_distances, batch_pids, batch_fids])
-    #             print('\rEvaluating batch {}-{}/{}'.format(
-    #                     start_idx, start_idx + len(fids), len(query_fids)),
-    #                   flush=True, end='')
-    #         except tf.errors.OutOfRangeError:
-    #             print()  # Done!
-    #             break
+    #print('olalal:' ,np.array(query_pids[0]))
+    #print(query_pids)
 
-    #         # Convert the array of objects back to array of strings
-    #         pids, fids = np.array(pids, '|U'), np.array(fids, '|U')
 
-    #         # Compute the pid matches
-    #         pid_matches = gallery_pids[None] == pids[:,None]
+    dataset_ = Dataset_(query_pids, query_fids, query_embs)
 
-    #         # Get a mask indicating True for those gallery entries that should
-    #         # be ignored for whatever reason (same camera, junk, ...) and
-    #         # exclude those in a way that doesn't affect CMC and mAP.
-    #         mask = excluder(fids)
-    #         distances[mask] = np.inf
-    #         pid_matches[mask] = False
+    dataloader = torch.utils.data.DataLoader(
+        dataset_,
+        batch_size=args.batch_size,
+        pin_memory=False,
+        drop_last=False,
+        shuffle=False,        
+        num_workers=4,
+    )
+    # for start_idx, (batch_pids, batch_fids, batch_embs) in zip(count(step=args.batch_size), tf.data.Dataset.from_tensor_slices(
+    #     (query_pids, query_fids, query_embs)).batch(args.batch_size)):
+    #     try:
+    #         # Compute distance to all gallery embeddings
+    #         batch_distances = loss.cdist(batch_embs, gallery_embs, metric=args.metric)
 
-    #         # Keep track of statistics. Invert distances to scores using any
-    #         # arbitrary inversion, as long as it's monotonic and well-behaved,
-    #         # it won't change anything.
-    #         scores = 1 / (1 + distances)
-    #         for i in range(len(distances)):
-    #             ap = average_precision(pid_matches[i], scores[i])
-
-    #             if np.isnan(ap):
-    #                 print()
-    #                 print("WARNING: encountered an AP of NaN!")
-    #                 print("This usually means a person only appears once.")
-    #                 print("In this case, it's because of {}.".format(fids[i]))
-    #                 print("I'm excluding this person from eval and carrying on.")
-    #                 print()
-    #                 continue
-
-    #             aps.append(ap)
-    #             # Find the first true match and increment the cmc data from there on.
-    #             k = np.where(pid_matches[i, np.argsort(distances[i])])[0][0]
-    #             cmc[k:] += 1
-    #for start_idx in count(step=args.batch_size):
-    for start_idx, (batch_pids, batch_fids, batch_embs) in zip(count(step=args.batch_size), tf.data.Dataset.from_tensor_slices(
-        (query_pids, query_fids, query_embs)).batch(args.batch_size)):
-        try:
+    #         distances = batch_distances
+    #         pids = batch_pids
+    #         fids = batch_fids
+    for start_idx, (batch_pids, batch_fids, batch_embs) in zip(count(step=args.batch_size), dataloader):
+        #try:
             # Compute distance to all gallery embeddings
-            batch_distances = loss.cdist(batch_embs, gallery_embs, metric=args.metric)
+        batch_distances = calc_cdist(batch_embs, torch.tensor(gallery_embs), metric=args.metric)
 
-            distances = batch_distances
-            pids = batch_pids
-            fids = batch_fids
+        distances = batch_distances
+        pids = batch_pids
+        fids = batch_fids
 
-            print('\rEvaluating batch {}-{}/{}'.format(
-                    start_idx, start_idx + len(fids), len(query_fids)),
-                  flush=True, end='')
-        except tf.errors.OutOfRangeError:
-            print()  # Done!
-            break
+        print('\rEvaluating batch {}-{}/{}'.format(
+                start_idx, start_idx + len(fids), len(query_fids)),
+              flush=True, end='')
+        # except tf.errors.OutOfRangeError:
+        #     print()  # Done!
+        #     break
 
         # Convert the array of objects back to array of strings
         pids, fids = np.array(pids, '|U'), np.array(fids, '|U')
@@ -251,8 +217,22 @@ def main():
         json.dump({'mAP': mean_ap, 'CMC': list(cmc), 'aps': list(aps)}, args.filename)
 
     # Print out a short summary.
+    print()
+    print()
     print('mAP: {:.2%} | top-1: {:.2%} top-2: {:.2%} | top-5: {:.2%} | top-10: {:.2%}'.format(
         mean_ap, cmc[0], cmc[1], cmc[4], cmc[9]))
+
+class Dataset_(torch.utils.data.Dataset):
+    def __init__(self, query_pids, query_fids, query_embs):
+        super().__init__()
+        self.query_pids = query_pids
+        self.query_fids = query_fids
+        self.query_embs = query_embs
+    def __len__(self):
+        return len(self.query_pids)
+    
+    def __getitem__(self, index: int):
+        return self.query_pids[index], self.query_fids[index], self.query_embs[index]
 
 if __name__ == '__main__':
     main()

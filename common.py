@@ -5,7 +5,7 @@ import logging
 import os
 
 import numpy as np
-import tensorflow as tf
+#import tensorflow as tf
 
 # Commandline argument parsing
 ###
@@ -142,6 +142,7 @@ def load_dataset(csv_file, image_root, fail_on_missing=True):
 
 
 def fid_to_image(fid, pid, image_root, image_size):
+    import tensorflow as tf
     """ Loads and resizes an image given by FID. Pass-through the PID. """
     # Since there is no symbolic path.join, we just add a '/' to be sure.
     image_encoded = tf.read_file(tf.reduce_join([image_root, '/', fid]))
