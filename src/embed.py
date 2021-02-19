@@ -14,7 +14,6 @@ import h5py
 from argparse import ArgumentParser
 import json
 import logger as log
-from augmentations import Hflip
 
 def clean_dict(dic):
     """Removes module from keys. This is done when because of DataParallel! TODO what if not DataParallel."""
@@ -35,7 +34,7 @@ def extract_csv_name(csv_file):
         return filename
 
 
-def write_to_h5(output_file, model, endpoints, num_augmentations, dataloader, dataset, keys=["emb"]):
+def write_to_h5(output_file, model, endpoints, dataloader, dataset, keys=["emb"]):
     """
     Writes model to h5
     """
@@ -50,7 +49,7 @@ def write_to_h5(output_file, model, endpoints, num_augmentations, dataloader, da
         # Dataparallel class!
         datasets = {}
         for key in keys:
-            datasets[key] = f_out.create_dataset(key, shape=(len(dataset), num_augmentations)                                      + model.module.dimensions[key], dtype=np.float32)
+            datasets[key] = f_out.create_dataset(key, shape=(len(dataset), )                                      + model.module.dimensions[key], dtype=np.float32)
         for key in dataset.header:
             datasets[key] = f_out.create_dataset(
                     key,
@@ -77,19 +76,17 @@ def get_args_path(model_path):
     return os.path.join(basepath, "args.json")
 
 class InferenceModel(object):
-    def __init__(self, model_path, augmentation, cuda=True):
+    def __init__(self, model_path, cuda=True):
         self.cuda = cuda
 
         args = load_args(model_path)
-        augment_fn, num_augmentations = augment_function_builder(augmentation)
-        self.transform = restore_transform(args, augment_fn)
+        self.transform = restore_transform(args)
         model, endpoints = restore_model(args, model_path)
         if self.cuda:
             model = model.cuda()
         self.model = model
         self.model.eval()
         self.endpoints = endpoints
-        self.num_augmentations = num_augmentations
 
     def __call__(self, images):
         """Forward pass on an image.
@@ -114,34 +111,53 @@ class InferenceModel(object):
         return self.endpoints.copy()
 
 
-def restore_transform(args, augmentation):
+# def restore_transform(args, augmentation):
+#     # TODO unify with training routine
+#     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+#                                     std=[0.229, 0.224, 0.225])
+
+#     H = args["image_height"]
+#     W = args["image_width"]
+#     scale = args["scale"]
+
+#     print(args)
+#     to_tensor = transforms.ToTensor()
+
+
+#     def to_normalized_tensor(crop):
+#         return normalize(to_tensor(crop))
+
+#     transform_comp = transforms.Compose([
+#             transforms.Resize((int(H*scale), int(W*scale))),
+#             augmentation((H, W)),
+#             transforms.Lambda(lambda crops: torch.stack([to_normalized_tensor(crop) for crop in crops]))
+#         ])
+
+#     return transform_comp
+
+from albumentations import (Compose, Normalize, Resize)
+from albumentations.pytorch import ToTensorV2
+
+def restore_transform(args):
     # TODO unify with training routine
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                    std=[0.229, 0.224, 0.225])
 
     H = args["image_height"]
     W = args["image_width"]
     scale = args["scale"]
 
     print(args)
-    to_tensor = transforms.ToTensor()
 
-
-    def to_normalized_tensor(crop):
-        return normalize(to_tensor(crop))
-
-    transform_comp = transforms.Compose([
-            transforms.Resize((int(H*scale), int(W*scale))),
-            augmentation((H, W)),
-            transforms.Lambda(lambda crops: torch.stack([to_normalized_tensor(crop) for crop in crops]))
-        ])
+    transform_comp = Compose([
+                Resize(int(H*0.75), int(W*0.75)),
+                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
+                ToTensorV2(p=1.0),
+            ], p=1.)
 
     return transform_comp
 
-
 class EmbeddingArch(torch.nn.Module):
     """Simple class to wrap around endpoints and model."""
-    def __init__(self, model, endpoints, augmentation):
+    def __init__(self, model, endpoints):
         self.model = model
         self.endpoints = endpoints
     def __call__(self, data):
@@ -183,14 +199,15 @@ def run_forward_pass(dataloader, model, endpoints):
 
     for idx, (data, _, row) in enumerate(dataloader):
         data = Variable(data).cuda()
+        #print(data.size())
         # with cropping there is an additional dimension
-        bs, ncrops, c, h, w = data.size()
+        bs, c, h, w = data.size()
         endpoints = model(data.view(-1, c, h, w), endpoints)
         # Transform to original shape
         for key, value in endpoints.items():
             #TODO fix what if not data parallel
             try:
-                endpoints[key] = endpoints[key].view((bs, ncrops) + model.module.dimensions[key])
+                endpoints[key] = endpoints[key].view((bs,) + model.module.dimensions[key])
                 #TODO handle GPU CPU!!!
                 endpoints[key] = endpoints[key].data.cpu().numpy()
             except AttributeError:
@@ -201,34 +218,15 @@ def run_forward_pass(dataloader, model, endpoints):
         print("\rDone (%d/%d)" % (idx, len(dataloader)), flush=True, end='')
 
 
-def no_augmentation(img):
-    """Returns an iterable to be compatible with cropping augmentations."""
-    return (img, )
 
-augmentation_choices = {
-        "TenCrop": (lambda args: transforms.TenCrop(args), 10),
-        "HorizontalFlip": (lambda args: Hflip(), 2),
-        "None": (lambda args: no_augmentation, 1)
-        }
-def augment_function_builder(augmentation):
-    """
-    Returns: Tuple of the augmentation function and the number of replications it will create."""
+def run(csv_file, data_dir, model_file, batch_size, crop, make_dataset_func,
+         keys, prefix=None, output_dir="embed", overwrite=False):
 
-
-    if augmentation in augmentation_choices:
-        return augmentation_choices[augmentation]
-    else:
-        raise NotImplementedError("Augmentation does not exist, choices from: {}".format(augmentation_choices.keys()))
-
-def run(csv_file, data_dir, model_file, batch_size, crop, make_dataset_func, 
-        augmentation, keys, prefix=None, output_dir="embed", overwrite=False):
-
-    augment_func, num_augmentations = augment_function_builder(augmentation)
 
     experiment = os.path.realpath(model_file).split('/')[-2]
     model_name = os.path.basename(model_file)
     csv_name = extract_csv_name(csv_file)
-    output_file = "{}-{}-{}.h5".format(csv_name, model_name, augmentation)
+    output_file = "{}-{}.h5".format(csv_name, model_name)
     if prefix is not None:
         output_file = "{}_{}".format(prefix, output_file)
 
@@ -252,7 +250,8 @@ def run(csv_file, data_dir, model_file, batch_size, crop, make_dataset_func,
         print("Creating file in %s" % output_file)
 
     args = load_args(model_file)
-    transform_comp  = restore_transform(args, augment_func)
+    transform_comp  = restore_transform(args)
+
     if crop:
         dataset = CsvDataset(csv_file, data_dir, loader_fn=pil_loader_with_crop, transform=transform_comp, make_dataset_func=make_dataset_func)
     else:
@@ -269,9 +268,9 @@ def run(csv_file, data_dir, model_file, batch_size, crop, make_dataset_func,
     model = torch.nn.DataParallel(model).cuda()
     model.eval()
     if keys:
-        return write_to_h5(output_file, model, endpoints, num_augmentations, dataloader, dataset, keys)
+        return write_to_h5(output_file, model, endpoints, dataloader, dataset, keys)
     else:
-        return write_to_h5(output_file, model, endpoints, num_augmentations, dataloader, dataset)
+        return write_to_h5(output_file, model, endpoints, dataloader, dataset)
 
 if __name__ == "__main__":
     parser = ArgumentParser()
@@ -312,7 +311,6 @@ if __name__ == "__main__":
             help="Overwrite existing file."
             )
     parser.add_argument('--keys', nargs='+', required=False)
-    parser.add_argument("--augmentation", default="None", choices=augmentation_choices.keys())
     parser.add_argument("--batch_size", default=32, type=int)
     args = parser.parse_args()
 
@@ -324,6 +322,6 @@ if __name__ == "__main__":
     else:
         make_dataset_func = make_dataset_default
     run(csv_file, data_dir, model_dir, args.batch_size, args.crop, make_dataset_func, 
-        args.augmentation, args.keys, args.prefix, args.output_dir, args.force)
+        args.keys, args.prefix, args.output_dir, args.force)
 
 

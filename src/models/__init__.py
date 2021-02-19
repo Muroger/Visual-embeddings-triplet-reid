@@ -4,13 +4,12 @@ Model initialization file
 import glob
 from importlib import import_module
 # get all py files in model dir
-files = glob.glob("models/[!_\.]*.py")
-
+files = glob.glob("./src/models/[!_\.]*.py")
 model_choices = []
 for model_file in files:
     if "utils.py" in model_file:
         continue
-    model_file = model_file[len("models/"):]
+    model_file = model_file[len("./src/models/"):]
     model_choices.append(model_file[:-len(".py")])
 
 modules = {}

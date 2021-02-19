@@ -8,6 +8,7 @@ from triplet_sampler import TripletBatchSampler, TripletBatchWithJunkSampler
 
 from triplet_loss import choices as loss_choices
 from triplet_loss import calc_cdist
+import sys; sys.path.append('./src/models')
 from models import get_model
 from models import model_choices
 import os
@@ -17,6 +18,17 @@ from argparse import ArgumentParser
 
 import logger as log
 import time
+
+
+from albumentations import (
+    HorizontalFlip, VerticalFlip, IAAPerspective, ShiftScaleRotate, CLAHE, RandomRotate90,
+    Transpose, ShiftScaleRotate, Blur, OpticalDistortion, GridDistortion, HueSaturationValue,
+    IAAAdditiveGaussianNoise, GaussNoise, MotionBlur, MedianBlur, IAAPiecewiseAffine, RandomResizedCrop,
+    IAASharpen, IAAEmboss, RandomBrightnessContrast, Flip, OneOf, Compose, Normalize, Cutout, CoarseDropout, ShiftScaleRotate, CenterCrop, Resize
+)
+
+from albumentations.pytorch import ToTensorV2
+
 # Lets cuDNN benchmark conv implementations and choose the fastest.
 # Only good if sizes stay the same within the main loop!
 torch.backends.cudnn.benchmark = True
@@ -86,15 +98,14 @@ parser.add_argument('--temp', default=1.0,
 parser.add_argument('--scale', default=1, type=float,
         help="Scaling of images before crop [scale * (image_height, image_width)]")
 
-parser.add_argument('--image_height', default=192, type=int,
+parser.add_argument('--image_height', default=256, type=int,
         help="Height of image that is fed to network.")
 
-parser.add_argument('--image_width', default=192, type=int,
+parser.add_argument('--image_width', default=256, type=int,
         help="Width of image that is fed to network.")
 
 parser.add_argument('--lr', default=3e-4, type=float,
         help="Learning rate.")
-
 
 parser.add_argument('--model', required=True, choices=model_choices)
 parser.add_argument('--loss', required=True, choices=loss_choices)
@@ -220,11 +231,34 @@ scale = args.scale
 transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.Resize((int(H*scale), int(W*scale))),
-        transforms.RandomCrop((H, W)),
+        #transforms.RandomCrop((H*0.75, W*0.75)),
+        normalize,
         transforms.ToTensor(),
-        normalize
+        
     ])
-dataset = CsvDataset(csv_file, data_dir, transform=transform, limit=args.limit)
+
+def get_train_transforms():
+    return Compose([
+            #RandomResizedCrop(int(H*0.75), int(W*0.75)),
+            Resize(int(H*0.75), int(W*0.75)),
+            #Transpose(p=0.5),
+            HorizontalFlip(p=0.2),
+            VerticalFlip(p=0.2),
+            ShiftScaleRotate(p=0.2),
+            #RandomRotate90(p=0.5),
+            #HueSaturationValue(hue_shift_limit=0.2, sat_shift_limit=0.2, val_shift_limit=0.2, p=0.5),
+            #RandomBrightnessContrast(brightness_limit=(-0.1,0.1), contrast_limit=(-0.1, 0.1), p=0.5),
+            Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
+            CoarseDropout(p=0.5),
+            Cutout(p=0.5),
+            ToTensorV2(p=1.0),
+        ], p=1.)
+
+
+
+
+
+dataset = CsvDataset(csv_file, data_dir, transform=get_train_transforms(), limit=args.limit)
 
 print("Loaded %d images" % len(dataset))
 if args.sampler == "TripletBatchSampler":
@@ -287,7 +321,7 @@ try:
 except ValueError:
     margin = args.margin
 
-
+#print(model)
 loss_param = {"m": margin, "T": args.temp,
               "a": args.alpha, "num_junk_images": args.J}
 

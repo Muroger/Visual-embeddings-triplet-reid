@@ -122,7 +122,7 @@ class Logger(object):
 
         print("Saved model to {}".format(path))
 
-    def save_model_file(self, model_name, model_path="models"):
+    def save_model_file(self, model_name, model_path="./src/models"):
         """Saves the model file to the directory."""
         src = os.path.join(model_path, "{}.py".format(model_name))
         dst = os.path.join(self.log_dir, "{}.py".format(model_name))

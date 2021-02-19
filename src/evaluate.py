@@ -13,7 +13,7 @@ parser.add_argument("--query", help="Path to query csv", required=True)
 parser.add_argument("--gallery", help="Path to gallery csv", required=True)
 parser.add_argument("--data_dir", help="Path to image directory", required=True)#
 parser.add_argument("--batch_size", help="Batch size", type=str, default="32")
-parser.add_argument("--augmentation",default="None", required=False)
+#parser.add_argument("--augmentation",default="None", required=False)
 parser.add_argument("--prefix", required=False)
 args = parser.parse_args()
 model_file = args.model
@@ -26,14 +26,14 @@ query_csv = os.path.expanduser(args.query)
 data_dir = os.path.expanduser(args.data_dir)
 
 gallery_embeddings = run(gallery_csv, data_dir, model_file, 4, False,
-                         make_dataset_default, args.augmentation, ['emb'], args.prefix)
+                         make_dataset_default, ['emb'], args.prefix)
 # generated filename is written in stderr, remove some whitecharacters.
 
 if gallery_csv == query_csv:
     query_embeddings = gallery_embeddings
 else:
-    query_embeddings = run(query_csv, data_dir, model_file, 4, False, make_dataset_default, 
-                           args.augmentation, ['emb'], args.prefix)
+    query_embeddings = run(query_csv, data_dir, model_file, 4, False,
+     make_dataset_default, ['emb'], args.prefix)
 print("Evaluating query: {}, gallery {}".format(query_csv, gallery_csv))
 if True:
     bin = "python3"

@@ -7,7 +7,7 @@
 
 python src/evaluate.py --dataset=../../dataset/in_shop_defense_triplet_loss_format_TRAIN.csv \
 	--data_dir=../../dataset/ \
-	--model=./experiments/myexperiment/model_3000 \
+	--model=./experiments/myexperiment_3/model_4000 \
 	--gallery=../../dataset/in_shop_defense_triplet_loss_format_GALLERY.csv \
 	--query=../../dataset/in_shop_defense_triplet_loss_format_QUERY.csv \
 	"$@"

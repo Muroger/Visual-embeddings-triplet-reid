@@ -3,6 +3,7 @@ from torch.utils.data import Dataset
 
 import os
 from PIL import Image
+import cv2
 
 import csv
 import warnings
@@ -25,6 +26,11 @@ def pil_loader(path, row):
         with Image.open(f) as img:
             return img.convert('RGB')
 
+def cv2_loader(path):
+    with open(path, 'rb') as f:
+        img = cv2.imread(f.name)
+
+        return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 def make_dataset_default(csv_file, data_dir, limit):
     """Reads in a csv file according to the scheme "target, path".
@@ -130,7 +136,7 @@ import time
 class CsvDataset(Dataset):
     """Loads data from a csv file."""
     JUNK_LABEL = "-1"
-    def __init__(self, csv_file, data_dir, loader_fn=pil_loader,
+    def __init__(self, csv_file, data_dir, loader_fn=cv2_loader,#loader_fn=pil_loader,
                  transform=None, limit=None, make_dataset_func=make_dataset_default, rewrite=True):
         """
         Args:
@@ -172,9 +178,9 @@ class CsvDataset(Dataset):
 
     def __getitem__(self, index):
         path, target, row = self.imgs[index]
-        img = self.loader(path, row)
+        img = self.loader(path)#, row)
         if self.transform is not None:
-            img = self.transform(img)
+            img = self.transform(image=img)['image']
         return img, target, row
 
     def __len__(self):
