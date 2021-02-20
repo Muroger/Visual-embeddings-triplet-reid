@@ -73,7 +73,8 @@ def batch_soft(cdist, pids, margin, T=1.0):
     """
     # mask where all positivies are set to true
     mask_pos = pids[None, :] == pids[:, None]
-    mask_neg = 1 - mask_pos.data
+    #print(~mask_pos.data)
+    mask_neg = ~mask_pos.data
 
     # only one copy
     cdist_max = cdist.clone()
@@ -108,7 +109,7 @@ class BatchSoft(nn.Module):
         self.m = m
         self.T = T
 
-    def forward(self, dist, pids):
+    def forward(self, dist, pids, **kwargs):
         return batch_soft(dist, pids, self.m, self.T)
 
 

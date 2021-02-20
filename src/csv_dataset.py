@@ -180,7 +180,9 @@ class CsvDataset(Dataset):
         path, target, row = self.imgs[index]
         img = self.loader(path)#, row)
         if self.transform is not None:
+            #img = img[int(img.shape[0]*0.25):, int(img.shape[1]*0.125):int(img.shape[1]*0.875), :]
             img = self.transform(image=img)['image']
+            #print(img.shape)
         return img, target, row
 
     def __len__(self):

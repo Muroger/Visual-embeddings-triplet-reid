@@ -222,29 +222,29 @@ t0 = args.decay_start_iteration
 t1 = args.train_iterations
 
 
-normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                std=[0.229, 0.224, 0.225])
+# normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+#                                 std=[0.229, 0.224, 0.225])
 
 H = args.image_height
 W = args.image_width
 scale = args.scale
-transform = transforms.Compose([
-        transforms.RandomHorizontalFlip(),
-        transforms.Resize((int(H*scale), int(W*scale))),
-        #transforms.RandomCrop((H*0.75, W*0.75)),
-        normalize,
-        transforms.ToTensor(),
+# transform = transforms.Compose([
+#         transforms.RandomHorizontalFlip(),
+#         transforms.Resize((int(H*scale), int(W*scale))),
+#         #transforms.RandomCrop((H*0.75, W*0.75)),
+#         normalize,
+#         transforms.ToTensor(),
         
-    ])
+#     ])
 
 def get_train_transforms():
     return Compose([
-            #RandomResizedCrop(int(H*0.75), int(W*0.75)),
-            Resize(int(H*0.75), int(W*0.75)),
+            RandomResizedCrop(int(H*0.75), int(W*0.75)),
+            #Resize(int(H*0.75), int(W*0.75)),
             #Transpose(p=0.5),
-            HorizontalFlip(p=0.2),
-            VerticalFlip(p=0.2),
-            ShiftScaleRotate(p=0.2),
+            HorizontalFlip(p=0.5),
+            #VerticalFlip(p=0.2),
+            #ShiftScaleRotate(p=0.5),
             #RandomRotate90(p=0.5),
             #HueSaturationValue(hue_shift_limit=0.2, sat_shift_limit=0.2, val_shift_limit=0.2, p=0.5),
             #RandomBrightnessContrast(brightness_limit=(-0.1,0.1), contrast_limit=(-0.1, 0.1), p=0.5),
@@ -326,7 +326,9 @@ loss_param = {"m": margin, "T": args.temp,
               "a": args.alpha, "num_junk_images": args.J}
 
 loss_fn = loss(**loss_param)
-optimizer = torch.optim.Adam(model.parameters(), lr=eps0, betas=(0.9, 0.999))
+optimizer = torch.optim.Adam(model.parameters(), lr=eps0, betas=(0.9, 0.999), weight_decay=1e-6)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=20, T_mult=1, eta_min=1e-6, last_epoch=-1)
+
 #optimizer = torch.optim.SGD(model.parameters(), lr=eps0, momentum=0.9, weight_decay=5e-4)
 
 
@@ -361,9 +363,12 @@ def calc_junk_acc(logits, targets, threshold=0.5):
     return torch.sum(targets == predicted).float() / targets.shape[0]
 
 #model.eval()
+print(model)
 for epoch in range(num_epochs):
     model = model.train()
-    lr = adjust_learning_rate_v2(optimizer, epoch+1)
+    scheduler.step()
+    #lr = adjust_learning_rate_v2(optimizer, epoch+1)
+    print('epoch {}/{}'.format(epoch, num_epochs))
     for batch_id, (data, target, path) in enumerate(dataloader):
         start_time = time.time()
         data, target = data.cuda(), target.cuda()
@@ -387,11 +392,17 @@ for epoch in range(num_epochs):
         optimizer.zero_grad()
         loss_mean.backward()
         optimizer.step()
+        
         #log.write("batch_norm", var2num(model.module.batch_norm.running_mean))
         took = time.time() - start_time
-        print("batch {} loss: {:.3f}|{:.3f}|{:.3f} lr: {:.6f} "
+        # print("batch {} loss: {:.3f}|{:.3f}|{:.3f} lr: {:.6f} "
+        #       "top1: {:.3f} top5: {:.3f} | took {:.3f}s".format(
+        #     t, min_loss, mean_loss, max_loss, lr,
+        #     topks[0], topks[4], took
+        #     ))
+        print("batch {} loss: {:.3f}|{:.3f}|{:.3f} "
               "top1: {:.3f} top5: {:.3f} | took {:.3f}s".format(
-            t, min_loss, mean_loss, max_loss, lr,
+            t, min_loss, mean_loss, max_loss,
             topks[0], topks[4], took
             ))
         t += 1

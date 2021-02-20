@@ -49,7 +49,7 @@ def write_to_h5(output_file, model, endpoints, dataloader, dataset, keys=["emb"]
         # Dataparallel class!
         datasets = {}
         for key in keys:
-            datasets[key] = f_out.create_dataset(key, shape=(len(dataset), )                                      + model.module.dimensions[key], dtype=np.float32)
+            datasets[key] = f_out.create_dataset(key, shape=(len(dataset), ) + model.module.dimensions[key], dtype=np.float32)
         for key in dataset.header:
             datasets[key] = f_out.create_dataset(
                     key,
@@ -135,7 +135,7 @@ class InferenceModel(object):
 
 #     return transform_comp
 
-from albumentations import (Compose, Normalize, Resize)
+from albumentations import (Compose, Normalize, Resize, CenterCrop)
 from albumentations.pytorch import ToTensorV2
 
 def restore_transform(args):
@@ -148,7 +148,8 @@ def restore_transform(args):
     print(args)
 
     transform_comp = Compose([
-                Resize(int(H*0.75), int(W*0.75)),
+                #Resize(int(H*0.75), int(W*0.75)),
+                CenterCrop(int(H*0.75), int(W*0.75)),
                 Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
                 ToTensorV2(p=1.0),
             ], p=1.)
@@ -252,10 +253,11 @@ def run(csv_file, data_dir, model_file, batch_size, crop, make_dataset_func,
     args = load_args(model_file)
     transform_comp  = restore_transform(args)
 
-    if crop:
-        dataset = CsvDataset(csv_file, data_dir, loader_fn=pil_loader_with_crop, transform=transform_comp, make_dataset_func=make_dataset_func)
-    else:
-        dataset = CsvDataset(csv_file, data_dir, transform=transform_comp, make_dataset_func=make_dataset_func)
+    dataset = CsvDataset(csv_file, data_dir, transform=transform_comp, make_dataset_func=make_dataset_func)
+    # if crop:
+    #     dataset = CsvDataset(csv_file, data_dir, loader_fn=pil_loader_with_crop, transform=transform_comp, make_dataset_func=make_dataset_func)
+    # else:
+    #     dataset = CsvDataset(csv_file, data_dir, transform=transform_comp, make_dataset_func=make_dataset_func)
 
     dataloader = torch.utils.data.DataLoader(
                 dataset,
