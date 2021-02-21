@@ -62,7 +62,7 @@ parser.add_argument(
         help="The maximum number of (Images) that are loaded from the dataset")
 
 parser.add_argument(
-        '--P', default=18, type=int,
+        '--P', default=8, type=int,
         help="Number of persons (pids) per batch.")
 
 parser.add_argument(
