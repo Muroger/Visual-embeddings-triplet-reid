@@ -79,3 +79,20 @@ python src/evaluate.py --dataset=file path/to/train/csv
 	--gallery=path/to/gallery/csv
 	--query=path//or/query/csv
 ```
+# Visualize results
+
+```
+python src/vis.py --img_folder=path/to/image/base/directory
+	--query_csv=path//or/query/csv
+	--query_h5=path/or/query/h5/embeddings
+	--gallery_csv=path/to/gallery/csv
+	--gallery_h5=path/or/gallery/h5/embeddings
+	--k=5
+	--output=path/to/img/output/folder
+```
+
+![alt text](./imgs/1.png)
+
+![alt text](./imgs/2.png)
+
+![alt text](./imgs/3.png)
